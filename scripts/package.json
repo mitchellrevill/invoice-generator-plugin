@@ -1,0 +1,10 @@
+{
+  "name": "invoice-generator-plugin-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI scripts for invoice PDF/HTML generation",
+  "dependencies": {
+    "jspdf": "^2.5.2"
+  }
+}

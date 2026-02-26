@@ -1,0 +1,14 @@
+{
+  "name": "invoice-generator",
+  "description": "Generate professional invoices with PDF and HTML output",
+  "version": "1.0.0",
+  "author": {
+    "name": "Invoice Tool"
+  },
+  "keywords": [
+    "invoice",
+    "pdf",
+    "billing",
+    "generator"
+  ]
+}

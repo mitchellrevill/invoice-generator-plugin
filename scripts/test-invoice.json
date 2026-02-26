@@ -1,0 +1,43 @@
+{
+  "invoiceNumber": "INV-2026-021",
+  "orderNumber": "PO-77831",
+  "date": "2026-02-26",
+  "dueDate": "2026-03-12",
+  "fromName": "Acme Consulting Ltd",
+  "fromAddress1": "123 High Street",
+  "fromAddress2": "Suite 4",
+  "fromCity": "London",
+  "fromPostcode": "EC1A 1BB",
+  "fromPhone": "020 7123 4567",
+  "fromEmail": "billing@acme.co.uk",
+  "toName": "Widget Corporation",
+  "toAddress1": "456 Business Park",
+  "toAddress2": "Unit 12",
+  "toCity": "Manchester",
+  "toPostcode": "M1 1AA",
+  "includeVat": true,
+  "vatRegNumber": "GB123456789",
+  "customFields": [
+    { "name": "Project", "value": "Website Replatform" },
+    { "name": "SAP Number", "value": "SAP-004921" }
+  ],
+  "items": [
+    {
+      "desc": "Frontend engineering and UX implementation (February 2026)",
+      "qty": 8,
+      "price": 425
+    },
+    {
+      "desc": "Cloud hosting and managed maintenance",
+      "qty": 1,
+      "price": 180
+    },
+    {
+      "desc": "SSL certificate renewal",
+      "qty": 2,
+      "price": 49.99
+    }
+  ],
+  "notes": "Payment due within 14 days.\nBank: Lloyds Bank\nSort Code: 30-00-00\nAccount: 12345678",
+  "businessTagline": "Professional Consulting Services"
+}
