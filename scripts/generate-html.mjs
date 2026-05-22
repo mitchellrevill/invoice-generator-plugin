@@ -240,10 +240,21 @@ function buildInvoiceHtml(invoice) {
   const notesHtml = invoice.notes
     ? `
       <section class="notes">
-        <h3>Notes &amp; Payment Details</h3>
+        <h3>Notes</h3>
         <p>${escapeHtml(invoice.notes)}</p>
       </section>`
     : '';
+
+  const paymentHtml = `
+      <section class="payment">
+        <h3>Payment Details</h3>
+        <div class="payment-grid">
+          <div><span class="label">Bank:</span> Virgin Money</div>
+          <div><span class="label">Account Number:</span> 21200470</div>
+          <div><span class="label">Sort Code:</span> 05-08-38</div>
+          <div><span class="label">VAT Reg:</span> 684341620</div>
+        </div>
+      </section>`;
 
   return `<!doctype html>
 <html lang="en-GB">
@@ -431,7 +442,7 @@ function buildInvoiceHtml(invoice) {
     }
 
     .notes {
-      margin-top: 22px;
+      margin-top: 16px;
       background: var(--surface-soft);
       border-left: 4px solid var(--primary-light);
       padding: 14px 16px;
@@ -451,6 +462,35 @@ function buildInvoiceHtml(invoice) {
       font-size: 0.93rem;
     }
 
+    .payment {
+      margin-top: 16px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--primary);
+      padding: 14px 16px;
+      border-radius: 6px;
+    }
+
+    .payment h3 {
+      margin: 0 0 10px;
+      color: var(--primary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .payment-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px 24px;
+      font-size: 0.9rem;
+    }
+
+    .payment-grid .label {
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
     .footer {
       margin-top: 24px;
       padding-top: 14px;
@@ -460,43 +500,44 @@ function buildInvoiceHtml(invoice) {
       font-size: 0.85rem;
     }
 
-    .footer .vat-note {
-      margin-top: 4px;
-      font-style: italic;
-      font-size: 0.8rem;
-    }
-
     @media (max-width: 760px) {
       body { padding: 10px; }
       .page { padding: 20px; }
       .addresses, .meta { grid-template-columns: 1fr; }
       .invoice-title { text-align: left; }
       .totals { width: 100%; }
+      .payment-grid { grid-template-columns: 1fr; }
     }
 
-    @page { size: A4; margin: 12mm; }
+    @page {
+      size: A4 portrait;
+      margin: 14mm 12mm;
+    }
 
     @media print {
-      body {
-        background: white;
-        padding: 0;
+      html, body {
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
 
       .page {
-        max-width: none;
-        border: none;
-        box-shadow: none;
-        margin: 0;
-        padding: 0;
+        max-width: none !important;
+        width: 100% !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
-      .header {
-        break-inside: avoid;
-      }
+      .header { break-inside: avoid; }
+      tr, .totals, .notes, .payment { break-inside: avoid; }
 
-      tr, .totals, .notes {
-        break-inside: avoid;
-      }
+      thead { display: table-header-group; }
+
+      .payment-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
@@ -574,9 +615,10 @@ function buildInvoiceHtml(invoice) {
 
     ${notesHtml}
 
+    ${paymentHtml}
+
     <footer class="footer">
       <div>Thank you for your business</div>
-      ${invoice.vatRegNumber ? `<div class="vat-note">VAT Reg number: ${escapeHtml(invoice.vatRegNumber)}</div>` : ''}
     </footer>
   </main>
 </body>

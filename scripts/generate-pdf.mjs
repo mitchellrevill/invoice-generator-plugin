@@ -501,6 +501,37 @@ function drawInvoicePdf(invoice, outputPath) {
     setBodyFont();
   }
 
+  // Payment details block
+  y += 8;
+  const paymentLines = [
+    ['Bank:', 'Virgin Money'],
+    ['Account Number:', '21200470'],
+    ['Sort Code:', '05-08-38'],
+    ['VAT Reg:', '684341620'],
+  ];
+  const paymentBlockHeight = paymentLines.length * 5 + 14;
+  ensureSpace(paymentBlockHeight + 2);
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(...darkBlue);
+  doc.setLineWidth(0.8);
+  doc.rect(margin, y, contentWidth, paymentBlockHeight, 'F');
+  doc.line(margin, y, margin, y + paymentBlockHeight);
+  y += 6;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...darkBlue);
+  doc.text('PAYMENT DETAILS', margin + 6, y);
+  y += 5;
+  paymentLines.forEach(([label, value]) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...darkGray);
+    doc.text(label, margin + 6, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(value, margin + 50, y);
+    y += 5;
+  });
+  setBodyFont();
+
   const footerY = pageHeight - 15;
   doc.setDrawColor(...lightGray);
   doc.setLineWidth(0.3);
@@ -509,11 +540,6 @@ function drawInvoicePdf(invoice, outputPath) {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...gray);
   doc.text('Thank you for your business', pageWidth / 2, footerY, { align: 'center' });
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  if (vatRegNumber) {
-    doc.text(`VAT Reg number: ${vatRegNumber}`, margin, footerY - 8);
-  }
 
   const outputBuffer = Buffer.from(doc.output('arraybuffer'));
   fs.writeFileSync(outputPath, outputBuffer);

@@ -1,14 +1,15 @@
 {
   "name": "invoice-generator",
-  "description": "Generate professional invoices with PDF and HTML output",
-  "version": "1.0.0",
+  "description": "Generate professional invoices with PDF and HTML output for Jon Revill Flooring",
+  "version": "1.1.0",
   "author": {
-    "name": "Invoice Tool"
+    "name": "Jon Revill Flooring"
   },
   "keywords": [
     "invoice",
     "pdf",
     "billing",
-    "generator"
+    "generator",
+    "flooring"
   ]
 }

@@ -1,88 +1,118 @@
 ---
-description: Create script-aligned invoice JSON (flat contract), ask for missing essentials, and generate PDF + HTML outputs.
+description: >
+  Create professional invoices as PDF and HTML for Jon Revill Flooring.
+  Triggers: "create invoice", "generate invoice", "invoice for [client]",
+  "make an invoice", uploading handwritten notes to turn into invoices,
+  "batch invoices", "invoice these jobs".
 ---
 
 # Invoice Create Skill
 
-Use this skill to transform user billing details into a **flat, script-aligned invoice JSON** and produce both outputs:
-- `invoice-generator-plugin/scripts/generate-pdf.mjs`
-- `invoice-generator-plugin/scripts/generate-html.mjs`
+Transform billing details into a flat script-aligned invoice JSON, then generate both PDF and HTML outputs.
 
-## Required payload keys (exact names)
+**Always read `known-clients.md` before doing anything else** — it contains the default sender (Bill From) and all client address presets.
 
-Collect these from the user (ask concise follow-up questions when missing):
+Reference files:
+- Address book: `invoice-generator-plugin/skills/create/reference/known-clients.md`
+- Schema + amount rules: `invoice-generator-plugin/skills/create/reference/invoice-schema.md`
+- PDF script: `invoice-generator-plugin/scripts/generate-pdf.mjs`
+- HTML script: `invoice-generator-plugin/scripts/generate-html.mjs`
 
-At minimum for reliable PDF+HTML generation:
-1. `invoiceNumber`
-2. `items` with at least one item object using:
-   - `desc`
-   - `qty`
-   - `price`
-   - optional `lineTotal`
+---
 
-Strongly recommended keys:
-- `dueDate`
-- `date`
-- `fromName`, `toName`
-- address/contact fields (`fromAddress1`, `fromCity`, `fromPostcode`, `fromPhone`, `fromEmail`, `toAddress1`, `toCity`, `toPostcode`)
-- `orderNumber`, `vatRegNumber`, `notes`, `businessTagline`, `customFields`
-- `includeVat` (boolean)
+## Step 1 — Determine invoice number(s)
 
-Reference contract: `invoice-generator-plugin/skills/create/reference/invoice-schema.md`
+Before building any invoice:
+1. Scan the user's output/invoice directory for files named `invoice-NNNN.pdf` or `invoice-NNNN.html`
+2. Find the highest number and add 1 for each new invoice
+3. If none found, ask the user what number to start from
+4. Use the plain number as `invoiceNumber` (e.g. `7068` — not `INV-7068`)
+5. For batches, increment sequentially: 7068, 7069, 7070…
 
-## Defaults and semantics (must follow scripts)
+---
 
-- UK render defaults are fixed in scripts: **GBP / en-GB**.
-- VAT behavior is fixed for now:
-   - `includeVat: true` => VAT is 20% of `subtotal` unless explicit `vat` provided
-   - `includeVat: false` => VAT defaults to `0`
-- If omitted, scripts compute:
-   - `subtotal = sum(items[].lineTotal)` (or computed from `qty * price`)
-   - `vat = includeVat ? subtotal * 0.2 : 0`
-   - `total = subtotal + vat`
-- `date` defaults to today; `dueDate` defaults to +14 days.
+## Step 2 — Auto-fill sender (Bill From)
 
-## Behavior
+**Always** populate `from*` fields from the **Default Sender** in `known-clients.md`. Never ask the user. Only override if the user explicitly specifies a different sender.
 
-1. **Gather missing data**
-   - If required fields are missing, ask targeted follow-up questions.
-   - Do not run generation scripts until required fields are present.
+---
 
-2. **Build canonical invoice JSON**
-   - Normalize types (numbers as numbers, dates as ISO-like strings).
-   - Use exact flat keys documented above.
-   - Compute or verify `subtotal`, `vat`, and `total`.
+## Step 3 — Identify recipient (Bill To)
 
-3. **Write JSON to a temp/input file**
-   - Save the final payload as a JSON file (for example in a working temp path).
+1. Check **Client Presets** in `known-clients.md` for a partial/case-insensitive name match
+2. If matched, silently populate all available `to*` fields
+3. If not found, use web search to look up the business address; confirm with user before using
+4. Ask only for fields still missing that are genuinely required
 
-4. **Generate both outputs**
-   - Run PDF generation:
-     - `node ${CLAUDE_PLUGIN_ROOT}/scripts/generate-pdf.mjs --input <invoice.json> --output <invoice.pdf>`
-   - Run HTML generation:
-     - `node ${CLAUDE_PLUGIN_ROOT}/scripts/generate-html.mjs --input <invoice.json> --output <invoice.html>`
+---
 
-5. **Return completion summary**
-   - Confirm output file locations for both `.pdf` and `.html`.
-   - If script execution fails, report stderr and likely field-level causes.
+## Step 4 — Amount interpretation (CRITICAL — read `invoice-schema.md`)
 
-## Minimal invocation example
+When you have a list of monetary values, **never assume they are all separate line items**. Apply these checks first:
 
-User asks:
-- “Create invoice INV-2026-0001 for Contoso: one line item ‘Design retainer’ for £1500, issue date 2026-02-26.”
+**Check A — Subtotal / VAT / Total pattern:**
+If you have 3 values and `value1 + value2 ≈ value3`, interpret as:
+- `subtotal = value1`, `vat = value2`, `total = value3`
+- Set all three explicitly in the JSON; do NOT add them as items
 
-Skill should:
-1. Ask only for missing required values (e.g., sender name if omitted).
-2. Build minimal valid JSON.
-3. Run:
-   - `node ${CLAUDE_PLUGIN_ROOT}/scripts/generate-pdf.mjs --input /tmp/inv-2026-0001.json --output /tmp/inv-2026-0001.pdf`
-   - `node ${CLAUDE_PLUGIN_ROOT}/scripts/generate-html.mjs --input /tmp/inv-2026-0001.json --output /tmp/inv-2026-0001.html`
+Example: `£1340 / £268 / £1608` → 1340+268=1608 ✓ → subtotal/vat/total
+
+**Check B — Subtotal / Total with implicit VAT:**
+If you have 2 values and `value1 * 1.2 ≈ value2`, interpret as:
+- `subtotal = value1`, `total = value2`, `vat = total - subtotal`
+
+Example: `£320 / £384` → 320×1.2=384 ✓ → subtotal/total, vat=64
+
+**Check C — Multiple subtotals + total:**
+If you have N values and the last one equals the sum of all others, the last is the total.
+
+**Only treat all values as independent line items if none of A/B/C match.**
+
+---
+
+## Step 5 — Build and generate
+
+1. Normalise all field types (numbers as numbers, dates as ISO strings)
+2. Use flat keys only — see `invoice-schema.md`
+3. Do NOT include `vatRegNumber` (hardcoded in scripts)
+4. Write JSON to a temp file (e.g. `/tmp/invoice-7068.json`)
+5. Run both scripts:
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/generate-pdf.mjs --input <json> --output <pdf>
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/generate-html.mjs --input <json> --output <html>
+   ```
+6. Report file locations; if a script fails, show stderr and likely cause
+
+---
+
+## Handwritten note rules
+
+### Page header = default Bill To
+- Company name at top-left of the page = Bill To for all invoices on that page
+- Look it up in `known-clients.md`; if not found, use web search
+- Each horizontal line across the page = new invoice
+
+### Individual address override
+- If a section has its own full name + address block, use THAT as the `to*` fields for that invoice
+- A bare property address (e.g. "73 Danewood Avenue", "Woodside Flat 26") = **job location, not a billing address**
+  - Put it in `customFields`: `{ "name": "Job Location", "value": "73 Danewood Avenue" }`
+
+### Numbers in the notes
+- Right-margin numbers (7070, 7071…) = `invoiceNumber`
+- Reference codes (VO2778/001, Order 456337) = `orderNumber`
+- "Revs/Reus VAT applies" or "VAT applies" = `includeVat: true`
+- No VAT note = `includeVat: false`
+
+### Monetary values — always apply Step 4 before building items
+
+### Verify before generating (batch mode)
+Present a summary table — invoice number, Bill To, job location, amount, VAT — and wait for confirmation before running scripts.
+
+---
 
 ## Guardrails
 
-- Keep invoice JSON strictly aligned to `invoice-schema.md` runtime contract.
-- Do not use legacy nested keys (`sender`, `billTo`, `lineItems`, nested `tax`) unless you map them to flat runtime keys before generation.
-- Prefer canonical item/custom-field keys (`desc`, `qty`, `price`, `lineTotal`, `name`, `value`).
-- Never invent legally sensitive party data; ask if unknown.
-- If date values are ambiguous, ask a clarifying question.
-- Ensure both output formats are attempted unless user explicitly asks for only one.
+- Never invent legally sensitive data (names, addresses, amounts); ask if unknown
+- Flat keys only — no nested `sender`, `billTo`, `lineItems`
+- Generate both PDF and HTML unless user asks for only one
+- Ambiguous dates → ask before assuming
